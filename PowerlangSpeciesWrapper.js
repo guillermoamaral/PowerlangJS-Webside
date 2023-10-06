@@ -1,6 +1,7 @@
 import PowerlangMethodWrapper from './PowerlangMethodWrapper.js';
 import PowerlangObjectWrapper from './PowerlangObjectWrapper.js';
 //import SCompiler from './SCompiler.js';
+const cachedSymbols = {};
 
 let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 	
@@ -130,7 +131,11 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 
 	includesSelector_(aSymbol) {
 		let symbol;
-		symbol = this._runtime.addSymbol_(aSymbol);
+		symbol = cachedSymbols[aSymbol];
+		if (!symbol) {
+			symbol = this._runtime.addSymbol_(aSymbol);
+			cachedSymbols[aSymbol] = symbol;
+		}
 		return this.send("includesSelector:", [symbol]).asLocalObject();
 	}
 
