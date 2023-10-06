@@ -12,6 +12,9 @@ class WebsideServer extends Object {
 		this.server = express();
 		this.server.use(cors());
 		this.initializeEndpoints();
+
+		// until we fix serialization of closures saved in kernel (their code is broken)
+		this.classNamed("Symbol").symbolTable().policy().useStringHash();
 	}
 
 	start() {
@@ -217,33 +220,39 @@ class WebsideServer extends Object {
 			return scope.implementorsOf(request, aSymbol);
 		}
 		let root = this.defaultRootClass();
-		return root.withAllSubclasses().filter( c => c.includesSelector(aSymbol)).map( c => c.send(">>", [aSymbol]) );
+		let interned = this.runtime.addSymbol_(aSymbol);
+
+		return root.withAllSubclasses().filter( c => c.includesSelector_(aSymbol)).map( c => c.send(">>", [interned]) );
 	}
 
 	queriedAccessing(request) {
-		return request.params.accessing;
+		return request.params.accessing || request.query.accessing;
 	}
 
 	queriedCategory(request) {
-		return request.params.category;
+		return request.params.category || request.query.category;
 	}
 
 	queriedClass(request) {
-		let k = request.params["class"]
+		let k = request.params["class"] || request.query["class"];
 		return (typeof k) == "function" ? undefined : k;
 	}
 
 	queriedReferencingClass(request) {
-		return request.params.referencingClass;
+		return request.params.referencingClass || request.query.referencingClass;
 	}
 
 	queriedReferencingString(request) {
-		return request.params.referencingString;
+		return request.params.referencingString || request.query.referencingString;
 	}
 
-
+	queriedScope(request) {
+		let scope = request.params.scope || request.query.scope;
+		return scope ? this.classNamed(scope) : scope;
+	}
+	
 	queriedSelector(request) {
-		return request.params.selector;
+		return request.params.selector || request.query.selector;
 	}
 
 	queriedSending(request) {
@@ -251,7 +260,7 @@ class WebsideServer extends Object {
 	}
 
 	requestedClass(request) {
-		const classname = request.params.classname;
+		const classname = request.params.classname || request.query.classname;
 		return classname? this.classNamed(classname) : undefined;
 	}
 }
