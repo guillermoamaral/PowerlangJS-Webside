@@ -4,6 +4,15 @@ import LMRSmallInteger from '../interpreter/LMRSmallInteger.js';
 
 let PowerlangSpeciesWrapper;
 
+let selectorFor = function(selector, args) {
+	if (args.length == 0)
+		return selector;
+	if (args.length == 1)
+		return selector + ":";
+	
+	throw "should be implemented";
+}
+
 let PowerlangObjectWrapper = class {
 
 	/*				if (typeof prop == "function")
@@ -23,7 +32,7 @@ let PowerlangObjectWrapper = class {
 				} 
 				else {
 					return function(...args) {
-						return target.doesNotUnderstand_(p, args);
+						return target.doesNotUnderstand_(selectorFor(p, args), args);
 					}
 				};
 			}
@@ -93,7 +102,7 @@ let PowerlangObjectWrapper = class {
 	send(selector, args = []) {
 		let _arguments, result, _class;
 		
-		_arguments = args.map((a) => { a instanceof PowerlangObjectWrapper ? a.wrappee() : a});
+		_arguments = args.map((a) => { return a instanceof PowerlangObjectWrapper ? a.wrappee() : a});
 		result = this._runtime.sendLocal_to_with_(selector, this._wrappee, _arguments);
 		if (!(result instanceof LMRObject))
 			return result;
