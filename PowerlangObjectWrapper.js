@@ -80,7 +80,7 @@ let PowerlangObjectWrapper = class {
 
 	asWebsideJson() {
 		let variable, printed;
-		variable = this.objectClass().isVariable().wrappee()._equal(this._runtime.true());
+		variable = this.objectClass().isVariable().asLocalObject();
 		printed = this._runtime.sendLocal_to_("printString", this._wrappee);
 		const obj = {
 			"class": this.objectClass().name(),

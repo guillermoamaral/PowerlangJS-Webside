@@ -1,29 +1,50 @@
-import PowerlangMethodWrapper from './PowerlangMethodWrapper.js';
-import PowerlangObjectWrapper from './PowerlangObjectWrapper.js';
+import PowerlangMethodWrapper from "./PowerlangMethodWrapper.js";
+import PowerlangObjectWrapper from "./PowerlangObjectWrapper.js";
 //import SCompiler from './SCompiler.js';
 const cachedSymbols = {};
 
 let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
-	
 	_shiftRight(aSymbol) {
 		let symbol;
 		symbol = this._runtime.symbolFromLocal_(aSymbol);
-		return PowerlangMethodWrapper.on_runtime_(this.send("shiftRight", [symbol]).wrappee(), this._runtime);
+		return PowerlangMethodWrapper.on_runtime_(
+			this.send("shiftRight", [symbol]).wrappee(),
+			this._runtime
+		);
 	}
 
 	allInstVarNames() {
-		return this.send("allInstVarNames").asArray().wrappee().slots().map((s) => s.asLocalString() );
+		return this.send("allInstVarNames")
+			.asArray()
+			.wrappee()
+			.slots()
+			.map((s) => s.asLocalString());
 	}
 
 	allSubclasses() {
 		const slots = this.send("allSubclasses").asArray().wrappee().slots();
-		const mapped = slots.map((c) => PowerlangSpeciesWrapper.on_runtime_(c, this._runtime) );
+		const mapped = slots.map((c) =>
+			PowerlangSpeciesWrapper.on_runtime_(c, this._runtime)
+		);
+
+		return mapped;
+	}
+
+	allSubspecies() {
+		const slots = this.send("allSubspecies").asArray().wrappee().slots();
+		const mapped = slots.map((c) =>
+			PowerlangSpeciesWrapper.on_runtime_(c, this._runtime)
+		);
 
 		return mapped;
 	}
 
 	allSuperclasses() {
-		return this.send("allSuperclasses").asArray().wrappee().slots().map((c) => PowerlangSpeciesWrapper.on_runtime_(c, this._runtime) );
+		return this.send("allSuperclasses")
+			.asArray()
+			.wrappee()
+			.slots()
+			.map((c) => PowerlangSpeciesWrapper.on_runtime_(c, this._runtime));
 	}
 
 	asWebsideJson() {
@@ -31,7 +52,10 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 
 		res["name"] = this.name();
 		res["definition"] = this.definition();
-		res["superclass"] = this.superclass().wrappee() !== this._runtime.nil() ? this.superclass().name() : null;
+		res["superclass"] =
+			this.superclass().wrappee() !== this._runtime.nil()
+				? this.superclass().name()
+				: null;
 		res["comment"] = this.instanceClass().comment();
 		res["variable"] = false;
 		res["project"] = "";
@@ -39,20 +63,31 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 	}
 
 	categories() {
-		return this.send("categories").asArray().wrappee().slots().map((c) => c.asLocalString() );
+		return this.send("categories")
+			.asArray()
+			.wrappee()
+			.slots()
+			.map((c) => c.asLocalString());
 	}
 
 	classVarNames() {
-		return this.send("classVarNames").asArray().wrappee().slots().map((s) => s.asLocalString() );
+		return this.send("classVarNames")
+			.asArray()
+			.wrappee()
+			.slots()
+			.map((s) => s.asLocalString());
 	}
 
 	classVariablesString() {
 		return String.streamContents_((s) => {
-			return this.classVarNames().do_separatedBy_((n) => {
-				return s.nextPutAll_(n)
-			}, () => {
-				return s.space()
-			})
+			return this.classVarNames().do_separatedBy_(
+				(n) => {
+					return s.nextPutAll_(n);
+				},
+				() => {
+					return s.space();
+				}
+			);
 		});
 	}
 
@@ -61,9 +96,19 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 	}
 
 	compile_(aString) {
-		let local, size, kernel, name, _class, method, astcodes, selector, format, code, md;
-		debugger
-/*		local = SCompiler.new().compile_(aString);
+		let local,
+			size,
+			kernel,
+			name,
+			_class,
+			method,
+			astcodes,
+			selector,
+			format,
+			code,
+			md;
+		debugger;
+		/*		local = SCompiler.new().compile_(aString);
 		size = this._runtime.newInteger_(local.size());
 		kernel = this._runtime.sendLocal_to_("namespace", this._runtime.kernel());
 		name = this._runtime.symbolFromLocal_("CompiledMethod");
@@ -86,20 +131,26 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 		md = this._runtime.sendLocal_to_("methodDictionary", this._wrappee);
 		this._runtime.sendLocal_to_with_("at:put:", md, [selector, method]);
 		return method;
-	*/	}
+	*/
+	}
 
 	definition() {
 		let highest;
 		return String.streamContents_((strm) => {
 			highest = this.superclass().wrappee()._equal(this._runtime.nil());
-			highest.ifTrue_ifFalse_(() => {
-				return strm.nextPutAll_("ProtoObject")
-			}, () => {
-				return strm.nextPutAll_(this.superclass().name())
-			});
+			highest.ifTrue_ifFalse_(
+				() => {
+					return strm.nextPutAll_("ProtoObject");
+				},
+				() => {
+					return strm.nextPutAll_(this.superclass().name());
+				}
+			);
 			_cascade(strm, (_recv) => {
 				_recv.space();
-				_recv.nextPutAll_(this.kindOfSubclass().wrappee().asLocalString());
+				_recv.nextPutAll_(
+					this.kindOfSubclass().wrappee().asLocalString()
+				);
 				_recv.space();
 				_recv.store_(this.name());
 				_recv.cr();
@@ -117,15 +168,17 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 				_recv.cr();
 				_recv.tab();
 				_recv.nextPutAll_("category: ");
-				return _recv.store_("");});
+				return _recv.store_("");
+			});
 			return highest.ifTrue_(() => {
 				return _cascade(strm, (_recv) => {
 					_recv.nextPutAll_(".");
 					_recv.cr();
 					_recv.nextPutAll_(this.name());
 					_recv.space();
-					return _recv.nextPutAll_("superclass: nil");})
-			})
+					return _recv.nextPutAll_("superclass: nil");
+				});
+			});
 		});
 	}
 
@@ -139,28 +192,58 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 		return this.send("includesSelector:", [symbol]).asLocalObject();
 	}
 
+	methodFor_(aSymbol) {
+		let symbol;
+		symbol = cachedSymbols[aSymbol];
+		if (!symbol) {
+			symbol = this._runtime.addSymbol_(aSymbol);
+			cachedSymbols[aSymbol] = symbol;
+		}
+		let method = this.send(">>", [symbol]);
+		return PowerlangMethodWrapper.on_runtime_(
+			method.wrappee(),
+			this._runtime
+		);
+	}
+
 	instVarNames() {
-		return this.send("instVarNames").asArray().wrappee().slots().map((s) => s.asLocalString() );
+		return this.send("instVarNames")
+			.asArray()
+			.wrappee()
+			.slots()
+			.map((s) => s.asLocalString());
 	}
 
 	instanceVariablesString() {
 		return String.streamContents_((s) => {
-			return this.instVarNames().do_separatedBy_((n) => {
-				return s.nextPutAll_(n)
-			}, () => {
-				return s.space()
-			})
+			return this.instVarNames().do_separatedBy_(
+				(n) => {
+					return s.nextPutAll_(n);
+				},
+				() => {
+					return s.space();
+				}
+			);
 		});
 	}
 
 	metaclass() {
-		return this.class().on_runtime_(this._runtime.sendLocal_to_("class", this._wrappee), this._runtime);
+		return this.class().on_runtime_(
+			this._runtime.sendLocal_to_("class", this._wrappee),
+			this._runtime
+		);
 	}
 
 	methods() {
 		let md;
 		md = this.methodDictionary();
-		return md.values().asSet().asArray().wrappee().slots().map(m => PowerlangMethodWrapper.on_runtime_(m, this._runtime) );
+		return md
+			.values()
+			.asSet()
+			.asArray()
+			.wrappee()
+			.slots()
+			.map((m) => PowerlangMethodWrapper.on_runtime_(m, this._runtime));
 	}
 
 	name() {
@@ -179,19 +262,26 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 	}
 
 	subclasses() {
-		return this.send("subclasses").asArray().wrappee().slots().map((c) => PowerlangSpeciesWrapper.on_runtime_(c, this._runtime) );
+		return this.send("subclasses")
+			.asArray()
+			.wrappee()
+			.slots()
+			.map((c) => PowerlangSpeciesWrapper.on_runtime_(c, this._runtime));
 	}
 
 	withAllSubclasses() {
 		return [this].concat(this.allSubclasses());
 	}
 
+	withAllSubspecies() {
+		return [this].concat(this.allSubspecies());
+	}
+
 	withAllSuperclasses() {
 		return [this].concat(this.allSuperclasses());
 	}
-
-}
+};
 
 PowerlangObjectWrapper.setPowerlangSpeciesWrapper(PowerlangSpeciesWrapper);
 
-export default PowerlangSpeciesWrapper
+export default PowerlangSpeciesWrapper;
