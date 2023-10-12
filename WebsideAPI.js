@@ -154,7 +154,7 @@ class WebsideAPI extends Object {
 		let id = this.requestedId();
 		let object = this.objectWithId(id);
 		if (!object) return this.notFound();
-		if (object.class().name() == "WebsideEvaluationError") {
+		if (object.objectClass().name() == "WebsideEvaluationError") {
 			return this.evaluationError(object);
 		}
 		this.respondWithJson(object.asWebsideJson());
@@ -172,18 +172,18 @@ class WebsideAPI extends Object {
 		}
 		let last = path.pop();
 		if (last == "instance-variables") {
-			return this.instanceVariablesOf(object);
+			return this.respondWithJson(this.instanceVariablesOf(object));
 		}
 		if (last == "named-slots") {
-			return this.namedSlotsOf(object);
+			return this.respondWithJson(this.namedSlotsOf(object));
 		}
 		if (last == "indexed-slots") {
-			return this.indexedSlotsOf(object);
+			return this.respondWithJson(this.indexedSlotsOf(object));
 		}
 		if (last == "custom-presentations") {
-			return this.customPresentationsOf(object);
+			return this.respondWithJson(this.customPresentationsOf(object));
 		}
-		object = thi.slotOf(last, object);
+		object = this.slotOf(last, object);
 		if (!object) return this.notFound();
 		this.respondWithJson(object.asWebsideJson());
 	}
@@ -203,6 +203,15 @@ class WebsideAPI extends Object {
 		let y = this.runtime.newInteger_(2);
 		let point = this.runtime.sendLocal_to_with_("@", x, [y]);
 		this.server.pinnedObjects[4] = this.wrap(point);
+		this.server.pinnedObjects[5] = this.classNamed("Point");
+	}
+
+	unpinObject() {
+		let id = this.requestedId();
+		if (!this.server.pinnedObjects.hasOwnProperty(id))
+			return this.notFound();
+		delete this.server.pinnedObjects[id];
+		this.respondWithData(id);
 	}
 
 	//Private...
@@ -376,7 +385,7 @@ class WebsideAPI extends Object {
 				let slot = this.slotOf(v, object);
 				let json = slot.asWebsideJson();
 				json["slot"] = v;
-				return json``;
+				return json;
 			});
 	}
 

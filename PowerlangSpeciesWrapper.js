@@ -48,18 +48,17 @@ let PowerlangSpeciesWrapper = class extends PowerlangObjectWrapper {
 	}
 
 	asWebsideJson() {
-		let res = super.asWebsideJson();
-
-		res["name"] = this.name();
-		res["definition"] = this.definition();
-		res["superclass"] =
+		let json = super.asWebsideJson();
+		json["name"] = this.name();
+		json["definition"] = this.definition();
+		json["superclass"] =
 			this.superclass().wrappee() !== this._runtime.nil()
 				? this.superclass().name()
 				: null;
-		res["comment"] = this.instanceClass().comment();
-		res["variable"] = false;
-		res["project"] = "";
-		return res;
+		json["comment"] = this.instanceClass().comment();
+		json["variable"] = false;
+		json["project"] = "";
+		return json;
 	}
 
 	categories() {

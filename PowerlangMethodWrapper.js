@@ -1,17 +1,17 @@
-import PowerlangObjectWrapper from './PowerlangObjectWrapper.js';
+import PowerlangObjectWrapper from "./PowerlangObjectWrapper.js";
 
 let PowerlangMethodWrapper = class extends PowerlangObjectWrapper {
 	asWebsideJson() {
-		let res = super.asWebsideJson();
-		res["selector"] = this.selector();
-		res["methodClass"] = this.classBinding().name();
-		res["category"] = "self category";
-		res["source"] = this.sourceCode();
-		res["author"] = "self author";
-		res["timestamp"] = "self timeStamp";
-		res["overriding"] = false;
-		res["overriden"] = false;
-		return res;
+		let json = super.asWebsideJson();
+		json["selector"] = this.selector();
+		json["methodClass"] = this.classBinding().name();
+		json["category"] = "self category";
+		json["source"] = this.sourceCode();
+		json["author"] = "self author";
+		json["timestamp"] = "self timeStamp";
+		json["overriding"] = false;
+		json["overriden"] = false;
+		return json;
 	}
 
 	selector() {
@@ -23,12 +23,9 @@ let PowerlangMethodWrapper = class extends PowerlangObjectWrapper {
 	sourceCode() {
 		let source;
 		source = this.sourceObject().wrappee();
-		if (source === this._runtime.nil()) 
-			return "no source"
-		else
-			return source.asLocalString();
+		if (source === this._runtime.nil()) return "no source";
+		else return source.asLocalString();
 	}
+};
 
-}
-
-export default PowerlangMethodWrapper
+export default PowerlangMethodWrapper;

@@ -100,6 +100,10 @@ class WebsideServer extends Object {
 		this.server.get("/objects/:id", (request, response) => {
 			this.api(request, response).pinnedObject();
 		});
+
+		this.server.delete("/objects/:id", (request, response) => {
+			this.api(request, response).unpinObject();
+		});
 	}
 }
 

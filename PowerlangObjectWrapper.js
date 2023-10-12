@@ -1,20 +1,17 @@
-import LMRByteObject from '../interpreter/LMRByteObject.js';
-import LMRObject from '../interpreter/LMRObject.js';
-import LMRSmallInteger from '../interpreter/LMRSmallInteger.js';
+import LMRByteObject from "../interpreter/LMRByteObject.js";
+import LMRObject from "../interpreter/LMRObject.js";
+import LMRSmallInteger from "../interpreter/LMRSmallInteger.js";
 
 let PowerlangSpeciesWrapper;
 
-let selectorFor = function(selector, args) {
-	if (args.length == 0)
-		return selector;
-	if (args.length == 1)
-		return selector + ":";
-	
+let selectorFor = function (selector, args) {
+	if (args.length == 0) return selector;
+	if (args.length == 1) return selector + ":";
+
 	throw "should be implemented";
-}
+};
 
 let PowerlangObjectWrapper = class {
-
 	/*				if (typeof prop == "function")
 						return function(...args) {
 							return prop.call(args);
@@ -24,71 +21,71 @@ let PowerlangObjectWrapper = class {
 	constructor() {
 		this._wrappee = nil;
 		this._runtime = nil;
-
 		return new Proxy(this, {
 			get(target, p) {
 				if (p in target) {
 					return target[p];
-				} 
-				else {
-					return function(...args) {
-						return target.doesNotUnderstand_(selectorFor(p, args), args);
-					}
-				};
-			}
-	  	});
+				} else {
+					return function (...args) {
+						return target.doesNotUnderstand_(
+							selectorFor(p, args),
+							args
+						);
+					};
+				}
+			},
+		});
 	}
 
-	static setPowerlangSpeciesWrapper(obj)
-	{
+	static setPowerlangSpeciesWrapper(obj) {
 		PowerlangSpeciesWrapper = obj;
 	}
 
-	initialize() {
-
-	}
+	initialize() {}
 
 	static on_runtime_(anLMRObject, aPowerlangLMR) {
 		let res = this.new();
 		res.wrappee_(anLMRObject);
 		res.runtime_(aPowerlangLMR);
 		return res;
-	}	
+	}
 
 	_equal(anObject) {
-		let object = (anObject instanceof PowerlangObjectWrapper) ? anObject.wrappee() : anObject;
+		let object =
+			anObject instanceof PowerlangObjectWrapper
+				? anObject.wrappee()
+				: anObject;
 		return this._wrappee == object;
 	}
 
 	asLocalObject() {
-	
-		if (this._wrappee === this._runtime.nil())
-			return nil;
-		if (this._wrappee === this._runtime.true())
-			return true;
-		if (this._wrappee === this._runtime.false())
-			return false;
+		if (this._wrappee === this._runtime.nil()) return nil;
+		if (this._wrappee === this._runtime.true()) return true;
+		if (this._wrappee === this._runtime.false()) return false;
 		if (this._wrappee.class() === LMRSmallInteger)
-			return this._wrappee.value()
+			return this._wrappee.value();
 		if (this._wrappee.class() === LMRByteObject)
 			return this._wrappee.asLocalString();
-
-		this.error_(("Cannot determine local equivalent of ")._comma(this._wrappee.printString()));
+		this.error_(
+			"Cannot determine local equivalent of "._comma(
+				this._wrappee.printString()
+			)
+		);
 		return nil;
-	
 	}
 
 	asWebsideJson() {
-		let variable, printed;
-		variable = this.objectClass().isVariable().asLocalObject();
-		printed = this._runtime.sendLocal_to_("printString", this._wrappee);
-		const obj = {
-			"class": this.objectClass().name(),
-			"indexable": variable,
-			"size": variable ? this.size().wrappee().value() : 0,
-			"printString": printed.asLocalString()
+		let species = this.objectClass();
+		let variable = species.isVariable().asLocalObject();
+		let printed = this._runtime.sendLocal_to_("printString", this._wrappee);
+		return {
+			class: species.name(),
+			indexable: variable,
+			size: variable ? this.size().wrappee().value() : 0,
+			printString: printed.asLocalString(),
+			hasNamedSlots: species.instancesHavePointers().asLocalObject(),
+			hasIndexedSlots: this.hasIndexedSlots().asLocalObject(),
 		};
-		return obj
 	}
 
 	displayString() {
@@ -101,13 +98,20 @@ let PowerlangObjectWrapper = class {
 
 	send(selector, args = []) {
 		let _arguments, result, _class;
-		
-		_arguments = args.map((a) => { return a instanceof PowerlangObjectWrapper ? a.wrappee() : a});
-		result = this._runtime.sendLocal_to_with_(selector, this._wrappee, _arguments);
-		if (!(result instanceof LMRObject))
-			return result;
-		
-		_class = this._runtime.sendLocal_to_("isSpecies", result) === this._runtime.true() ? PowerlangSpeciesWrapper : PowerlangObjectWrapper;
+		_arguments = args.map((a) => {
+			return a instanceof PowerlangObjectWrapper ? a.wrappee() : a;
+		});
+		result = this._runtime.sendLocal_to_with_(
+			selector,
+			this._wrappee,
+			_arguments
+		);
+		if (!(result instanceof LMRObject)) return result;
+		_class =
+			this._runtime.sendLocal_to_("isSpecies", result) ===
+			this._runtime.true()
+				? PowerlangSpeciesWrapper
+				: PowerlangObjectWrapper;
 		return _class.on_runtime_(result, this._runtime);
 	}
 
@@ -124,7 +128,9 @@ let PowerlangObjectWrapper = class {
 	}
 
 	notNil() {
-		return this._runtime.sendLocal_to_("notNil", this._wrappee)._notEqual(this._runtime.nil());
+		return this._runtime
+			.sendLocal_to_("notNil", this._wrappee)
+			._notEqual(this._runtime.nil());
 	}
 
 	object() {
@@ -147,7 +153,10 @@ let PowerlangObjectWrapper = class {
 	}
 
 	slotAt_(index) {
-		return this.class().on_runtime_(this._wrappee.slotAt_(index), this._runtime);
+		return this.class().on_runtime_(
+			this._wrappee.slotAt_(index),
+			this._runtime
+		);
 	}
 
 	stDisplayString() {
@@ -162,7 +171,6 @@ let PowerlangObjectWrapper = class {
 		this._wrappee = anLMRObject;
 		return this;
 	}
+};
 
-}
-
-export default PowerlangObjectWrapper
+export default PowerlangObjectWrapper;
