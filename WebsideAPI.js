@@ -14,6 +14,10 @@ class WebsideAPI extends Object {
 		this.response.sendStatus(404);
 	}
 
+	badRequest(text) {
+		this.response.status(400).send(text || "Bad Request");
+	}
+
 	respondWithData(data) {
 		this.response.end(data);
 	}
@@ -214,6 +218,17 @@ class WebsideAPI extends Object {
 		this.respondWithData(id);
 	}
 
+	pinObjectSlot() {
+		let slot = this.requestedSlot();
+		if (!slot) return this.badRequest("Bad object slot URI");
+		// Replace with UUID or the like...
+		let id = (Object.keys(this.server.pinnedObjects).length + 1).toString();
+		this.server.pinnedObjects[id] = slot;
+		let json = slot.asWebsideJson();
+		json["id"] = id;
+		this.respondWithJson(json);
+	}
+
 	//Private...
 	wrap(object) {
 		return PowerlangObjectWrapper.on_runtime_(object, this.runtime);
@@ -366,6 +381,30 @@ class WebsideAPI extends Object {
 
 	parameterAt(name) {
 		return this.request.params[name];
+	}
+
+	bodyAt(name) {
+		return this.request.body[name];
+	}
+
+	requestedSlot() {
+		let uri = this.bodyAt("uri");
+		if (!uri) return null;
+		let index = uri.indexOf("/objects/") + 9;
+		let path = uri.substring(index, uri.length);
+		return this.objectFromPath(path);
+	}
+
+	objectFromPath(path) {
+		let segments = path.split("/");
+		let id = segments[0];
+		let slot = this.server.pinnedObjects[id];
+		if (!slot) return null;
+		for (let i = 1; i < segments.length; i++) {
+			slot = this.slotOf(segments[i], slot);
+			if (!slot) return null;
+		}
+		return slot;
 	}
 
 	instanceVariablesOf(object) {

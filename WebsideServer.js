@@ -12,6 +12,7 @@ class WebsideServer extends Object {
 		this.port = port;
 		this.server = express();
 		this.server.use(cors());
+		this.server.use(express.json());
 		this.initializeEndpoints();
 		this.pinnedObjects = {};
 		this.evaluations = {};
@@ -103,6 +104,10 @@ class WebsideServer extends Object {
 
 		this.server.delete("/objects/:id", (request, response) => {
 			this.api(request, response).unpinObject();
+		});
+
+		this.server.post("/objects", (request, response) => {
+			this.api(request, response).pinObjectSlot();
 		});
 	}
 }
