@@ -1,5 +1,7 @@
 import PowerlangObjectWrapper from "./PowerlangObjectWrapper.js";
 import aPowerlangSpeciesWrapper from "./PowerlangSpeciesWrapper.js";
+import PowertalkEvaluatorError from "../interpreter/PowertalkEvaluatorError.js";
+import PowerlangMethodWrapper from "./PowerlangMethodWrapper.js";
 
 class WebsideAPI extends Object {
 	constructor(server, request, response) {
@@ -16,6 +18,10 @@ class WebsideAPI extends Object {
 
 	badRequest(text) {
 		this.response.status(400).send(text || "Bad Request");
+	}
+
+	error(text) {
+		this.response.status(500).send(text || "Internal server error");
 	}
 
 	respondWithData(data) {
@@ -158,8 +164,8 @@ class WebsideAPI extends Object {
 		let id = this.requestedId();
 		let object = this.objectWithId(id);
 		if (!object) return this.notFound();
-		if (object.objectClass().name() == "WebsideEvaluationError") {
-			return this.evaluationError(object);
+		if (object instanceof PowertalkEvaluatorError) {
+			return this.evaluationError(id);
 		}
 		this.respondWithJson(object.asWebsideJson());
 	}
@@ -193,21 +199,28 @@ class WebsideAPI extends Object {
 	}
 
 	pinSampleObjects() {
-		this.server.pinnedObjects[0] = this.wrap(this.runtime.nil());
-		this.server.pinnedObjects[1] = this.wrap(this.runtime.true());
-		this.server.pinnedObjects[2] = this.wrap(this.runtime.newInteger_(123));
-		// this.server.pinnedObjects[3] = this.wrap(
-		// 	this.runtime.newArray_([
-		// 		// this.runtime.nil(),
-		// 		// this.runtime.true(),
-		// 		// this.runtime.newInteger_(123),
-		// 	])
-		// );
+		this.server.pinnedObjects[this.server.newId()] = this.wrap(
+			this.runtime.nil()
+		);
+		this.server.pinnedObjects[this.server.newId()] = this.wrap(
+			this.runtime.true()
+		);
+		this.server.pinnedObjects[this.server.newId()] = this.wrap(
+			this.runtime.newInteger_(123)
+		);
+		this.server.pinnedObjects[this.server.newId()] = this.wrap(
+			this.runtime.newArray_([
+				this.runtime.nil(),
+				this.runtime.true(),
+				this.runtime.newInteger_(123),
+			])
+		);
 		let x = this.runtime.newInteger_(1);
 		let y = this.runtime.newInteger_(2);
 		let point = this.runtime.sendLocal_to_with_("@", x, [y]);
-		this.server.pinnedObjects[4] = this.wrap(point);
-		this.server.pinnedObjects[5] = this.classNamed("Point");
+		this.server.pinnedObjects[this.server.newId()] = this.wrap(point);
+		this.server.pinnedObjects[this.server.newId()] =
+			this.classNamed("Point");
 	}
 
 	unpinObject() {
@@ -227,6 +240,149 @@ class WebsideAPI extends Object {
 		let json = slot.asWebsideJson();
 		json["id"] = id;
 		this.respondWithJson(json);
+	}
+
+	//Evaluation endpoints...
+	evaluateExpression() {
+		let debug = this.bodyAt("debug");
+		if (debug == true) return this.debugExpression();
+		let expression = this.bodyAt("expression");
+		let sync = this.bodyAt("sync");
+		if (sync == undefined) sync = true;
+		let pin = this.bodyAt("pin");
+		if (pin == undefined) pin = false;
+		let id = this.server.newId();
+		let object;
+		try {
+			// let i = this.runtime.newInteger_(1);
+			// object = this.runtime.sendLocal_to_("asOrderedCollection", i);
+
+			// let x = this.runtime.newInteger_(1);
+			// let y = this.runtime.newInteger_(2);
+			// let point = this.runtime.sendLocal_to_with_("@", x, [y]);
+			// object = this.runtime.sendLocal_to_with_("left:", point, [
+			// 	this.runtime.nil(),
+			// ]);
+
+			let array = this.runtime.newArray_([
+				this.runtime.nil(),
+				this.runtime.true(),
+				this.runtime.newInteger_(123),
+			]);
+			object = this.runtime.sendLocal_to_("printString", array);
+
+			object = this.wrap(object);
+			if (!sync || pin) {
+				this.server.pinnedObjects[id] = object;
+			}
+		} catch (error) {
+			this.server.evaluations[id] = error;
+			this.server.pinnedObjects[id] = error;
+		}
+		if (sync) {
+			if (!object) return this.evaluationError(id);
+			let json = object.asWebsideJson();
+			if (pin) {
+				json["id"] = id.toString();
+			}
+			return this.respondWithJson(json);
+		}
+		this.respondWithJson({
+			id: id.toString(),
+			expression: expression,
+		});
+	}
+
+	//Debugging endpoints...
+	createDebugger() {
+		let id = this.bodyAt("evaluation");
+		if (!id) return this.notFound();
+		let error = this.server.evaluations[id];
+		if (!error) return this.notFound();
+		let _debugger = { id: id, description: error.message };
+		this.server.debuggers[id] = _debugger;
+		this.respondWithJson(_debugger);
+	}
+
+	debuggerFrames() {
+		let id = this.requestedId();
+		let _debugger = this.server.debuggers[id];
+		if (!_debugger) return this.notFound();
+		let error = this.server.evaluations[id];
+		let frames = error.context.backtrace();
+		let json = frames.map((frame, index) => {
+			let method = PowerlangMethodWrapper.on_runtime_(
+				frame[0],
+				this.runtime
+			);
+			let receiver = PowerlangObjectWrapper.on_runtime_(
+				frame[1],
+				this.runtime
+			);
+			let label =
+				receiver.objectClass().name() + ">>" + method.selector();
+			return { index: index, label, label };
+		});
+		this.respondWithJson(json);
+	}
+
+	debuggerFrame() {
+		let id = this.requestedId();
+		let _debugger = this.server.debuggers[id];
+		if (!_debugger) return this.notFound();
+		let index = this.requestedIndex();
+		let error = this.server.evaluations[id];
+		let frames = error.context.backtrace();
+		if (index > frames.lengh - 1) return this.notFound();
+		let frame = frames[index];
+		let method = PowerlangMethodWrapper.on_runtime_(frame[0], this.runtime);
+		let receiver = PowerlangObjectWrapper.on_runtime_(
+			frame[1],
+			this.runtime
+		);
+		let label = receiver.objectClass().name() + ">>" + method.selector();
+		let json = {
+			index: index,
+			label: label,
+			class: receiver.objectClass().asWebsideJson(),
+			method: method.asWebsideJson(),
+			interval: [0, 0],
+		};
+		this.respondWithJson(json);
+	}
+
+	frameBindings() {
+		let id = this.requestedId();
+		let _debugger = this.server.debuggers[id];
+		if (!_debugger) return this.notFound();
+		let index = this.requestedIndex();
+		let frame = { bindings: [] };
+		let bindings = frame.bindings.map((b) => {
+			let type = b.isTemporary()
+				? "temporary"
+				: b.isArgument()
+				? "argument"
+				: "variable";
+			let print;
+			try {
+				print = b.object.printString();
+			} catch (error) {
+				print = "Cannot print object";
+			}
+			return { name: b.name, value: print, type: type };
+		});
+		this.respondWithJson(bindings);
+	}
+
+	deleteDebugger() {
+		let id = this.requestedId();
+		let _debugger = this.server.debuggers[id];
+		if (_debugger) {
+			delete this.server.debuggers[id];
+			delete this.server.evaluations[id];
+			delete this.server.pinnedObjects[id];
+		}
+		this.respondWithData(id);
 	}
 
 	//Private...
@@ -383,6 +539,10 @@ class WebsideAPI extends Object {
 		return this.request.params[name];
 	}
 
+	urlAt(name) {
+		return this.request.params[name];
+	}
+
 	bodyAt(name) {
 		return this.request.body[name];
 	}
@@ -460,6 +620,20 @@ class WebsideAPI extends Object {
 		}
 		let index = object.objectClass().allInstVarNames().indexOf(slot);
 		return index != -1 ? object.slotAt_(index + 1) : null;
+	}
+
+	evaluationError(id) {
+		let error = this.server.evaluations[id];
+		let json = {
+			description: error.description,
+			evaluation: id.toString(),
+		};
+		this.error(JSON.stringify(json));
+	}
+
+	requestedIndex() {
+		let index = this.urlAt("index");
+		return index ? parseInt(index) : null;
 	}
 }
 

@@ -3,6 +3,7 @@ import cors from "cors";
 import PowerlangObjectWrapper from "./PowerlangObjectWrapper.js";
 import aPowerlangSpeciesWrapper from "./PowerlangSpeciesWrapper.js";
 import WebsideAPI from "./WebsideAPI.js";
+import { v4 as uuidv4 } from "uuid";
 
 class WebsideServer extends Object {
 	constructor(host, port, runtime) {
@@ -16,6 +17,7 @@ class WebsideServer extends Object {
 		this.initializeEndpoints();
 		this.pinnedObjects = {};
 		this.evaluations = {};
+		this.debuggers = {};
 
 		// until we fix serialization of closures saved in kernel (their code is broken)
 		let api = new WebsideAPI(this);
@@ -109,6 +111,39 @@ class WebsideServer extends Object {
 		this.server.post("/objects", (request, response) => {
 			this.api(request, response).pinObjectSlot();
 		});
+
+		//Evaluation endpoints..."
+		this.server.post("/evaluations", (request, response) => {
+			this.api(request, response).evaluateExpression();
+		});
+
+		//Debugging endpoints..."
+		this.server.post("/debuggers", (request, response) => {
+			this.api(request, response).createDebugger();
+		});
+
+		this.server.get("/debuggers/:id/frames", (request, response) => {
+			this.api(request, response).debuggerFrames();
+		});
+
+		this.server.get("/debuggers/:id/frames/:index", (request, response) => {
+			this.api(request, response).debuggerFrame();
+		});
+
+		this.server.get(
+			"/debuggers/:id/frames/:index/bindings",
+			(request, response) => {
+				this.api(request, response).frameBindings();
+			}
+		);
+
+		this.server.delete("/debuggers/:id", (request, response) => {
+			this.api(request, response).deleteDebugger();
+		});
+	}
+
+	newId() {
+		return uuidv4();
 	}
 }
 

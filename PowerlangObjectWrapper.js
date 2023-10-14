@@ -77,12 +77,22 @@ let PowerlangObjectWrapper = class {
 	asWebsideJson() {
 		let species = this.objectClass();
 		let variable = species.isVariable().asLocalObject();
-		let printed = this._runtime.sendLocal_to_("printString", this._wrappee);
+		let name = species.name();
+		let printed;
+		//This check should be removed once we solve Recurson exception in Collection printing...
+		let trouble = species
+			.withAllSuperclasses()
+			.find((c) => c.notNil() && c.name() == "Collection");
+		printed = trouble
+			? "a " + name
+			: this._runtime
+					.sendLocal_to_("printString", this._wrappee)
+					.asLocalString();
 		return {
-			class: species.name(),
+			class: name,
 			indexable: variable,
 			size: variable ? this.size().wrappee().value() : 0,
-			printString: printed.asLocalString(),
+			printString: printed,
 			hasNamedSlots: species.instancesHavePointers().asLocalObject(),
 			hasIndexedSlots: this.hasIndexedSlots().asLocalObject(),
 		};
